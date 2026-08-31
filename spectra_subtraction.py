@@ -94,7 +94,7 @@ for adccnt in np.arange(4):
 FFTdat0=np.fft.fft(sintval[0::4]) # type: ignore
 freq=np.arange(len(FFTdat0))*Nsamp/len(FFTdat0)
 #subtract channel 3 from channel 0 in complex domain to remove common RFI
-FFTdat_subtracted=FFTdat0 - np.fft.fft(sintval[3::4]) # type: ignore 
+FFTdat_subtracted=FFTdat0 / np.fft.fft(sintval[3::4]) # type: ignore 
 ax[1].plot(freq,20*np.log10(np.abs(FFTdat0)/np.abs(FFTdat0).max()), label='Channel 0', linewidth=3)
 ax[1].plot(freq, 20*np.log10(np.abs(FFTdat_subtracted)/np.abs(FFTdat_subtracted).max()), label='Subtracted', linewidth=3)
 ax[1].legend()
