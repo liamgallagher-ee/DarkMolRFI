@@ -83,7 +83,7 @@ ax[1].tick_params(width=2)
 for adccnt in np.arange(4):
    adcdat=sintval[adccnt::4]
    ax[0].plot(adcdat, label=ADC[adccnt], linewidth=3)
-   Ps=np.abs(fft(adcdat))
+   Ps=np.abs(fft(adcdat)) # type: ignore
    freq=np.arange(len(Ps))*Nsamp/len(Ps)
    ax[1].plot(freq, 20*np.log10(Ps/Ps.max()), label=ADC[adccnt], linewidth=3)
 
