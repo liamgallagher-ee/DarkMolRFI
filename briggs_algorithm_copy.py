@@ -12,8 +12,8 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Briggs Algorithm")
     parser.add_argument("input_file", help="Input file containing noisy sine data")
-    parser.add_argument("--FFT-size", type=int, default=1024, help="Size of the FFT window")
-    parser.add_argument("--overlap", type=int, default=512, help="Overlap between FFT windows")
+    parser.add_argument("--FFT-size", type=int, default=2048, help="Size of the FFT window")
+    parser.add_argument("--overlap", type=int, default=1024, help="Overlap between FFT windows")
     parser.add_argument("--plot-output", type=str, default=None, help="Output file to save the comparison plot")
     args = parser.parse_args()
     if args.plot_output is None:
@@ -165,6 +165,7 @@ def main():
 
     #save the cleaned matrix to CSV for further analysis
     np.savetxt('P11_clean.csv', P11_clean, delimiter=',', fmt='%.6e')
+    np.savetxt('P11_orig.csv', P11_orig, delimiter=',', fmt='%.6e')
 
 if __name__ == "__main__":
     main()
