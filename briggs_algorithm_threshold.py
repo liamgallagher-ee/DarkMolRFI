@@ -15,12 +15,13 @@ def parse_args():
     parser.add_argument("--FFT-size", type=int, default=2048, help="Size of the FFT window")
     parser.add_argument("--overlap", type=int, default=1024, help="Overlap between FFT windows")
     parser.add_argument("--plot-output", type=str, default=None, help="Output file to save the comparison plot")
+    parser.add_argument("--threshold-factor", type=float, default=6.0, help="Threshold factor for RFI detection (in units of MAD)")
     args = parser.parse_args()
     if args.plot_output is None:
         args.plot_output = 'comparison_spectrogram.png'
     return args
 
-def briggs_rfi_cancellation(ch1, ch2, ch3, ch4, fs=61440000, nfft=2048, overlap=1024):
+def briggs_rfi_cancellation(ch1, ch2, ch3, ch4, fs=61440000, nfft=2048, overlap=1024, threshold_factor=6):
     """
     Implements F.H. Briggs RFI post-correlation cancellation keeping time history 
     intact for spectrogram visualization.
@@ -67,20 +68,47 @@ def briggs_rfi_cancellation(ch1, ch2, ch3, ch4, fs=61440000, nfft=2048, overlap=
         P24[i, :] = v2 * np.conj(v4)
         P34[i, :] = v3 * np.conj(v4)
         
-    # Calculate closure-based RFI power models per time frame
-    # Adding a tiny epsilon prevents divide-by-zero errors in noise-only channels
+        # Calculate closure-based RFI power models per time frame
     eps = 1e-18
     M1 = (P13 * np.conj(P14)) / (np.conj(P34) + eps)
     M2 = (P23 * np.conj(P24)) / (np.conj(P34) + eps)
     
-
-
-    # Subtract RFI model matrix from original matrices
-    P11_clean = P11 - np.real(M1)
-    P22_clean = P22 - np.real(M2)
+    
+    # Take the real part of the models
+    M1_real = np.real(M1)
+    M2_real = np.real(M2)
+    
+    #Compute the magnitude of the reference cross-correlation
+    P34_mag = np.abs(P34)
+    
+    #Calculate the median and MAD across the entire time-frequency plane
+    median_val = np.median(P34_mag)
+    mad_val = np.median(np.abs(P34_mag - median_val))
+    
+    # Establish a standard threshold (typically 5 to 7 sigma)
+    # 1.4826 scales the MAD to equal a standard deviation for a normal distribution
+    sigma_estimate = 1.4826 * mad_val
+    threshold = median_val + (threshold_factor * sigma_estimate)
+    
+    #Create a boolean mask where true, coherent RFI exceeds the noise threshold
+    rfi_mask = P34_mag > threshold
+    
+    #Apply the mask: keep the model where RFI exists, set to 0.0 everywhere else
+    M1_cleaned_model = np.where(rfi_mask, M1_real, 0.0)
+    M2_cleaned_model = np.where(rfi_mask, M2_real, 0.0)
+    
+    #Perform the targeted subtraction
+    P11_clean = P11 - M1_cleaned_model
+    P22_clean = P22 - M2_cleaned_model
+    
+    # Enforce a strict minimum floor to guarantee no negative power values 
+    # slip into log plots
+    P11_clean = np.maximum(P11_clean, 1e-10)
+    P22_clean = np.maximum(P22_clean, 1e-10)
     
     freqs = np.fft.rfftfreq(nfft, d=1/fs)
     return freqs, P11, P11_clean, P22_clean, M1, M2
+
 
 def spectro_compare(P1, P1_corrected, plot_output):
     # Enforce threshold to avoid taking log of zero or negatives
@@ -166,8 +194,10 @@ def main():
     spectro_compare(P11_orig, P11_clean, args.plot_output)
 
     #save the cleaned matrix to CSV for further analysis
-    np.savetxt('P11_clean.csv', P11_clean, delimiter=',', fmt='%.6e')
-    np.savetxt('P11_orig.csv', P11_orig, delimiter=',', fmt='%.6e')
+    clean_name = os.path.splitext(args.plot_output)[0] + '_P11_clean.csv'
+    orig_name = os.path.splitext(args.plot_output)[0] + '_P11_orig.csv'
+    np.savetxt(clean_name, P11_clean, delimiter=',', fmt='%.6e')
+    np.savetxt(orig_name, P11_orig, delimiter=',', fmt='%.6e')
 
 if __name__ == "__main__":
     main()
