@@ -52,25 +52,25 @@ def window_fft_data(data,fs, wind_len,overlap, window):
    return fft_segments, frequencies, win
 
 def spectro_compare(P1, P1_corrected,freqs, plot_output):
-    #make sure both are in dB
+    #make sure both are in dB + make sure no log of zero
     P1_dB = 10 * np.log10(P1 + 1e-12)
     P1_corrected_dB = 10 * np.log10(P1_corrected + 1e-12)
-    #find common min/max
+    #find common min/max for plot
     vmin = np.min([P1_dB, P1_corrected_dB])
     vmax = np.max([P1_dB, P1_corrected_dB])
 
     #make side by side by side comparison of the spectrograms
     fig,(ax1,ax2) = plt.subplots(2,1,figsize=(10,8),sharex=True,sharey=True)
     im1 = ax1.imshow(P1_dB.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap='viridis')
-    ax1.set_xlabel('Frequency')
-    ax1.set_ylabel('Time')
+    ax1.set_xlabel('Time')
+    ax1.set_ylabel('Frequency')
     ax1.set_title('Original Power Spectral Density')
     im2 = ax2.imshow(P1_corrected_dB.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap='viridis')
     ax2.set_title('Corrected Power Spectral Density')
     plt.colorbar(im1, ax=ax1)
     plt.colorbar(im2, ax=ax2)
-    ax2.set_xlabel('Frequency')
-    ax1.set_ylabel('Time')
+    ax2.set_xlabel('Time')
+    ax1.set_ylabel('Frequency')
 
     plt.tight_layout()
     if plot_output:
@@ -91,7 +91,7 @@ def main():
     S4, _, _ = window_fft_data(dat3, Fsamp, args.FFT_size, args.overlap, args.window)
 
     #compute power spectral density 
-    P1 =(S1 * np.conj(S1)).real # power spectral density is only real values
+    P1 =(S1 * np.conj(S1)).real # power spectral density is only real values 
 
     #compute CSD for P1
     C13 = (S1 * np.conj(S3))
